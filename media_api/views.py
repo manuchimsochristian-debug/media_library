@@ -1,3 +1,5 @@
+from rest_framework.parsers import MultiPartParser, FormParser
+from .serializers import FileSerializer
 import os
 from django.conf import settings
 from django.shortcuts import get_object_or_404  # Crucial import added here
@@ -95,4 +97,41 @@ class MoveFolderView(APIView):
             folder_obj.parent = None
 
         folder_obj.save()
-        return Response({"message": f"Folder moved successfully to folder {target_folder_id or 'Root'}."}, status=status.HTTP_200_OK)
+        return Response({"message": f"Folder moved successfully to folder {target_folder_id or 'Root'}."}, 
+        status=status.HTTP_200_OK)
+    
+class UploadFileView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        serializer = FileSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(owner=request.user)
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class ListFilesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        files = File.objects.filter(owner=request.user)
+
+        serializer = FileSerializer(
+            files,
+            many=True
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )

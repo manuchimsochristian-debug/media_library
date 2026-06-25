@@ -55,10 +55,44 @@ class MediaAPITests(APITestCase):
         """Ensure a folder cannot be moved into itself or its own child subfolder."""
         self.client.force_authenticate(user=self.user1)
         url = reverse('move-folder', kwargs={'folder_id': self.folder1.id})
-        
-        # Attempting to move parent 'Folder 1' inside its child 'Subfolder 1'
+
         data = {'target_folder_id': self.subfolder1.id}
         response = self.client.patch(url, data, format='json')
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
+
+    def test_upload_file_success(self):
+        """Ensure an authenticated user can upload a file."""
+
+        self.client.force_authenticate(user=self.user1)
+
+        upload_file = SimpleUploadedFile(
+            "upload_test.txt",
+            b"Hello Upload",
+            content_type="text/plain"
+        )
+
+        response = self.client.post(
+            reverse('upload-file'),
+            {
+                "name": "Uploaded File",
+                "file": upload_file,
+            },
+            format='multipart'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(File.objects.count(), 2)
+
+    def test_list_files_success(self):
+        """Ensure an authenticated user can view their files."""
+
+        self.client.force_authenticate(user=self.user1)
+
+        response = self.client.get(
+            reverse('list-files')
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
